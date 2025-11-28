@@ -22,13 +22,12 @@ A beautiful weather display for the TRMNL OG e-paper device, inspired by [lmarze
 All settings are in `include/config.h`:
 
 ### Already Configured For You:
-- **Location**: Stretford, Manchester (M32 8WF)
 - **OpenWeatherMap API**: Your API key
 - **Home Assistant**: 
-  - Host: 10.0.1.24
-  - Temperature: sensor.nest_thermostat_temperature
-  - Humidity: sensor.nest_thermostat_humidity
-- **MQTT**: Port 1883, user matt, pass honey1
+  - Host: homeassistant.local
+  - Temperature: sensor.xxxx_thermostat_temperature
+  - Humidity: sensor.xxxx_thermostat_humidity
+- **MQTT**: Port 1883, user xxxxx, pass xxxxx
 - **Units**: Celsius, mph, 24-hour time
 - **Timezone**: UK (GMT/BST)
 
@@ -128,7 +127,7 @@ The device automatically registers itself with Home Assistant via MQTT discovery
 - Check serial output for error messages
 
 ### Indoor data showing N/A
-- Verify Home Assistant is accessible at 10.0.1.24
+- Verify Home Assistant is accessible at homeassistant.local
 - Check the access token is valid
 - Ensure sensor entities exist and are available
 
