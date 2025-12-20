@@ -6,8 +6,8 @@
 #ifndef __CONFIG_H__
 #define __CONFIG_H__
 
-#include <cstdint>
 #include <Arduino.h>
+#include <cstdint>
 
 // =============================================================================
 // E-PAPER PANEL - TRMNL OG uses 7.5" 800x480 Black/White
@@ -74,17 +74,17 @@
 // =============================================================================
 // DISPLAY OPTIONS
 // =============================================================================
-#define DISPLAY_DAILY_PRECIP 2        // Smart: show only when precipitation forecasted
-#define DISPLAY_HOURLY_ICONS 0        // Disabled - icons were floating above graph
-#define DISPLAY_ALERTS 1              // Show weather alerts
+#define DISPLAY_DAILY_PRECIP 2 // Smart: show only when precipitation forecasted
+#define DISPLAY_HOURLY_ICONS 0 // Disabled - icons were floating above graph
+#define DISPLAY_ALERTS 1       // Show weather alerts
 
 // =============================================================================
 // STATUS BAR
 // =============================================================================
 #define STATUS_BAR_EXTRAS_BAT_PERCENTAGE 1
-#define STATUS_BAR_EXTRAS_BAT_VOLTAGE    0
-#define STATUS_BAR_EXTRAS_WIFI_STRENGTH  1
-#define STATUS_BAR_EXTRAS_WIFI_RSSI      0
+#define STATUS_BAR_EXTRAS_BAT_VOLTAGE 0
+#define STATUS_BAR_EXTRAS_WIFI_STRENGTH 1
+#define STATUS_BAR_EXTRAS_WIFI_RSSI 0
 
 // =============================================================================
 // BATTERY
@@ -104,7 +104,7 @@
 // =============================================================================
 // PIN DEFINITIONS - Set in config.cpp for TRMNL OG hardware
 // =============================================================================
-#define PIN_BUTTON 2  // BOOT button on ESP32-C3
+#define PIN_BUTTON 2 // BOOT button on ESP32-C3
 extern const uint8_t PIN_BAT_ADC;
 extern const uint8_t PIN_EPD_BUSY;
 extern const uint8_t PIN_EPD_CS;
@@ -177,12 +177,9 @@ extern const char *NEXTCLOUD_USER;
 extern const char *NEXTCLOUD_PASS;
 extern const char *NEXTCLOUD_PHOTO;
 extern const char *NEXTCLOUD_CARTOON;
+extern const char *NEXTCLOUD_FIRMWARE_PATH;
 
 // Display modes
-enum DisplayMode {
-  MODE_WEATHER = 0,
-  MODE_CARTOON = 1,
-  MODE_COUNT = 3
-};
+enum DisplayMode { MODE_WEATHER = 0, MODE_CARTOON = 1, MODE_COUNT = 3 };
 
 #endif // __CONFIG_H__

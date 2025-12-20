@@ -14,6 +14,7 @@
 #define WATCHDOG_TIMEOUT_SECONDS 30
 
 static bool watchdogInitialized = false;
+static bool watchdogPaused = false;
 static unsigned long watchdogStartTime = 0;
 static unsigned int watchdogTimeoutSeconds = WATCHDOG_TIMEOUT_SECONDS;
 
@@ -35,8 +36,36 @@ void initWatchdog(unsigned int timeoutSeconds) {
   Serial.printf("Watchdog initialized: %d seconds\n", timeoutSeconds);
 }
 
+void pauseWatchdog() {
+  if (!watchdogInitialized || watchdogPaused) {
+    return;
+  }
+
+  // Remove current task from watchdog and deinitialize it
+  esp_task_wdt_delete(NULL);
+  esp_task_wdt_deinit();
+  watchdogPaused = true;
+
+  Serial.println("Watchdog paused");
+}
+
+void resumeWatchdog() {
+  if (!watchdogInitialized || !watchdogPaused) {
+    return;
+  }
+
+  // Re-initialize watchdog with previous timeout and re-add current task
+  esp_task_wdt_init(watchdogTimeoutSeconds, true);
+  esp_task_wdt_add(NULL);
+  esp_task_wdt_reset();
+
+  watchdogPaused = false;
+
+  Serial.println("Watchdog resumed");
+}
+
 void feedWatchdog() {
-  if (!watchdogInitialized) {
+  if (!watchdogInitialized || watchdogPaused) {
     return;
   }
   

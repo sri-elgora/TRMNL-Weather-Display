@@ -50,7 +50,7 @@
 #endif
 
 /* Power-on and connect WiFi.
- * Takes int parameter to store WiFi RSSI, or “Received Signal Strength
+ * Takes int parameter to store WiFi RSSI, or "Received Signal Strength
  * Indicator"
  *
  * Returns WiFi status.
@@ -78,6 +78,33 @@ wl_status_t startWiFi(int &wifiRSSI)
     wifiRSSI = WiFi.RSSI(); // get WiFi signal strength now, because the WiFi
                             // will be turned off to save power!
     Serial.println("IP: " + WiFi.localIP().toString());
+    Serial.println("DNS: " + WiFi.dnsIP().toString());
+    
+    // Wait for DNS to be ready - DHCP provides IP but DNS may lag behind
+    // This prevents DNS resolution failures on first API calls
+    Serial.print("Waiting for DNS");
+    int dnsWaitAttempts = 0;
+    const int maxDnsWait = 20; // 2 seconds max
+    while (WiFi.dnsIP() == IPAddress(0, 0, 0, 0) && dnsWaitAttempts < maxDnsWait)
+    {
+      Serial.print(".");
+      delay(100);
+      dnsWaitAttempts++;
+    }
+    Serial.println();
+    
+    if (WiFi.dnsIP() == IPAddress(0, 0, 0, 0))
+    {
+      Serial.println("Warning: DNS not available, using fallback");
+      // Set Google DNS as fallback
+      WiFi.config(WiFi.localIP(), WiFi.gatewayIP(), WiFi.subnetMask(),
+                  IPAddress(8, 8, 8, 8), IPAddress(8, 8, 4, 4));
+      Serial.println("DNS (fallback): " + WiFi.dnsIP().toString());
+    }
+    
+    // Additional stabilization delay for network stack
+    delay(500);
+    Serial.println("Network ready");
   }
   else
   {
