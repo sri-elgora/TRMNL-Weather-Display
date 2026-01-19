@@ -13,14 +13,28 @@
 // TRMNL OG PIN DEFINITIONS (ESP32-C3)
 // Based on TRMNL firmware pinout
 // =============================================================================
-const uint8_t PIN_BAT_ADC = 3;   // Battery ADC (GPIO3)
+// const uint8_t PIN_BAT_ADC = 3;   // Battery ADC (GPIO3)
+// const uint8_t PIN_EPD_BUSY = 4;  // E-Paper BUSY
+// const uint8_t PIN_EPD_CS = 6;    // E-Paper CS (Chip Select)
+// const uint8_t PIN_EPD_RST = 10;  // E-Paper RST (Reset)
+// const uint8_t PIN_EPD_DC = 5;    // E-Paper DC (Data/Command)
+// const uint8_t PIN_EPD_SCK = 7;   // E-Paper SCK (SPI Clock)
+// const uint8_t PIN_EPD_MISO = -1; // Not used (display is write-only)
+// const uint8_t PIN_EPD_MOSI = 8;  // E-Paper MOSI (SPI Data)
+// const uint8_t PIN_EPD_PWR = -1;  // Not used on TRMNL OG (always powered)
+
+// =============================================================================
+// TRMNL OG PIN DEFINITIONS (ESP32-S3)
+// Based on TRMNL firmware pinout
+// =============================================================================
+const uint8_t PIN_BAT_ADC = 1;   // Battery ADC (GPIO1)
 const uint8_t PIN_EPD_BUSY = 4;  // E-Paper BUSY
-const uint8_t PIN_EPD_CS = 6;    // E-Paper CS (Chip Select)
-const uint8_t PIN_EPD_RST = 10;  // E-Paper RST (Reset)
-const uint8_t PIN_EPD_DC = 5;    // E-Paper DC (Data/Command)
-const uint8_t PIN_EPD_SCK = 7;   // E-Paper SCK (SPI Clock)
+const uint8_t PIN_EPD_CS = 8;    // E-Paper CS (Chip Select)
+const uint8_t PIN_EPD_RST = 15;  // E-Paper RST (Reset)
+const uint8_t PIN_EPD_DC = 20;    // E-Paper DC (Data/Command)
+const uint8_t PIN_EPD_SCK = 9;   // E-Paper SCK (SPI Clock)
 const uint8_t PIN_EPD_MISO = -1; // Not used (display is write-only)
-const uint8_t PIN_EPD_MOSI = 8;  // E-Paper MOSI (SPI Data)
+const uint8_t PIN_EPD_MOSI = 11;  // E-Paper MOSI (SPI Data)
 const uint8_t PIN_EPD_PWR = -1;  // Not used on TRMNL OG (always powered)
 
 // BME sensor pins - not used, we use Home Assistant
