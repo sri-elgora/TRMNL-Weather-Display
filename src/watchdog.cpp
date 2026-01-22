@@ -101,7 +101,7 @@ void watchdogCheckAndSleep(unsigned long startTime, unsigned int maxSeconds) {
     // Force minimal sleep (1 minute)
     esp_sleep_enable_timer_wakeup(60ULL * 1000000ULL);
     pinMode(PIN_BUTTON, INPUT_PULLUP);
-    esp_deep_sleep_enable_gpio_wakeup(1ULL << PIN_BUTTON, ESP_GPIO_WAKEUP_GPIO_LOW);
+    esp_sleep_enable_ext0_wakeup((gpio_num_t)PIN_BUTTON, 0);
     
     Serial.println("Entering emergency sleep mode");
     Serial.flush();

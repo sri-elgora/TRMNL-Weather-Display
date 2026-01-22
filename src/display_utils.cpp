@@ -36,6 +36,33 @@
  */
 uint32_t readBatteryVoltage()
 {
+#ifdef BOARD_TRMNL_ESP32S3
+  // TRMNL ESP32-S3 board with VBAT switch (Seeed XIAO style)
+  // Enable battery voltage measurement switch
+  pinMode(PIN_VBAT_SWITCH, OUTPUT);
+  digitalWrite(PIN_VBAT_SWITCH, HIGH);
+  delay(10); // Wait for switch to stabilize
+  
+  // Oversample 8x for accuracy
+  int32_t adc = 0;
+  analogRead(PIN_BAT_ADC); // Initialize ADC
+  for (uint8_t i = 0; i < 8; i++) {
+    adc += analogReadMilliVolts(PIN_BAT_ADC);
+  }
+  
+  // Disable switch to save power
+  digitalWrite(PIN_VBAT_SWITCH, LOW);
+  
+  // Average readings
+  uint32_t avgMillivolts = adc / 8;
+  
+  // wegen Spannungsteiler * 2
+  uint32_t batteryVoltage = avgMillivolts * 2;
+  
+  return batteryVoltage;
+  
+#else
+  // Original code for ESP32-C3 / DFRobot FireBeetle
   esp_adc_cal_characteristics_t adc_chars;
   // __attribute__((unused)) disables compiler warnings about this variable
   // being unused (Clang, GCC) which is the case when DEBUG_LEVEL == 0.
@@ -71,6 +98,7 @@ uint32_t readBatteryVoltage()
   // multiplied by 2.
   batteryVoltage *= 2;
   return batteryVoltage;
+#endif
 } // end readBatteryVoltage
 
 /* Returns battery percentage, rounded to the nearest integer.

@@ -168,26 +168,41 @@ void initDisplay() {
     delay(10);
   }
 
-  // Reset sequence
+  // Reset sequence - longer delays for ESP32-S3
   pinMode(PIN_EPD_RST, OUTPUT);
   digitalWrite(PIN_EPD_RST, LOW);
-  delay(100);
+  delay(200);
   digitalWrite(PIN_EPD_RST, HIGH);
-  delay(100);
+  delay(200);
 
-  // Initialize SPI for ESP32-C3
-  SPI.end();
-  SPI.begin(PIN_EPD_SCK, PIN_EPD_MISO, PIN_EPD_MOSI, -1);
+  // Initialize SPI with explicit pins for ESP32-S3
+  // ESP32-S3 can use any GPIO for SPI (software SPI)
+  SPI.begin(PIN_EPD_SCK, PIN_EPD_MISO, PIN_EPD_MOSI, PIN_EPD_CS);
+  SPI.setFrequency(4000000); // 4MHz - stable for most displays
+  
+  Serial.printf("SPI initialized: SCK=%d, MISO=%d, MOSI=%d, CS=%d\n", 
+                PIN_EPD_SCK, PIN_EPD_MISO, PIN_EPD_MOSI, PIN_EPD_CS);
+  Serial.printf("DC=%d, RST=%d, BUSY=%d\n", PIN_EPD_DC, PIN_EPD_RST, PIN_EPD_BUSY);
 
 #ifdef DRIVER_WAVESHARE
-  display.init(115200, true, 2, true, SPI,
-               SPISettings(8000000, MSBFIRST, SPI_MODE0));
+  Serial.println("Initializing display with WAVESHARE driver...");
+  // Parameter: (serial_diag_bitrate, initial, reset_duration, pulldown_rst_mode, spi, spi_settings)
+  display.init(0, true, 2, false);
 #endif
 #ifdef DRIVER_DESPI_C02
-  display.init(115200, true, 10, true, SPI,
-               SPISettings(8000000, MSBFIRST, SPI_MODE0));
+  Serial.println("Initializing display with DESPI_C02 driver...");
+  // Ohne SPI-Parameter - lässt GxEPD2 SPI selbst initialisieren
+  // reset_duration=10ms, kein pulldown auf RST
+  display.init(0, true, 10, false);
 #endif
 
+  Serial.println("Display init completed");
+  
+  // Test: Kann das Display kommunizieren?
+  Serial.println("Testing display communication...");
+  display.fillScreen(GxEPD_WHITE);
+  Serial.println("fillScreen completed");
+  
   display.setRotation(0);
   display.setTextSize(1);
   display.setTextColor(GxEPD_BLACK);

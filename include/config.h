@@ -30,7 +30,7 @@
 // =============================================================================
 // LOCALE - UK English
 // =============================================================================
-#define LOCALE en_GB
+#define LOCALE de_DE
 
 // =============================================================================
 // UNITS - UK Settings
@@ -104,8 +104,17 @@
 // =============================================================================
 // PIN DEFINITIONS - Set in config.cpp for TRMNL OG hardware
 // =============================================================================
-#define PIN_BUTTON 2 // BOOT button on ESP32-C3
+#ifdef BOARD_TRMNL_ESP32S3
+  #define PIN_BUTTON 0 // BOOT button (GPIO0 on Seeed XIAO ESP32S3)
+  #define BUTTON_D1 D1 // BUTTON D1
+  #define BUTTON_D2 D2 // BUTTON D2
+#else  
+  #define PIN_BUTTON 2 // BOOT button (GPIO2 on ESP32-C3)
+#endif
 extern const uint8_t PIN_BAT_ADC;
+#ifdef BOARD_TRMNL_ESP32S3
+extern const uint8_t PIN_VBAT_SWITCH;
+#endif
 extern const uint8_t PIN_EPD_BUSY;
 extern const uint8_t PIN_EPD_CS;
 extern const uint8_t PIN_EPD_RST;

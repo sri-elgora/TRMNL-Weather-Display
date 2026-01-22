@@ -74,6 +74,9 @@ RTC_DATA_ATTR unsigned long lastButtonPressTime = 0;
 // Double-tap detection constants
 #define DOUBLE_TAP_WINDOW_MS 800 // Max time between taps for double-tap
 
+// Forward declarations
+void executeButtonD1Routine();
+
 /* Fetch indoor temperature from Home Assistant using HTTPClient */
 float getHomeAssistantSensorState(const char *entity_id) {
   HTTPClient http;
@@ -574,17 +577,22 @@ void beginDeepSleep(unsigned long startTime, tm *timeInfo) {
   // Enable timer wake
   esp_sleep_enable_timer_wakeup(sleepDuration * 1000000ULL);
 
-  // Enable GPIO wake for button press (ESP32-C3)
+  // Enable GPIO wake for button press (ESP32-S3)
   // Configure button pin for wake
-  pinMode(PIN_BUTTON, INPUT_PULLUP);
-  esp_deep_sleep_enable_gpio_wakeup(1ULL << PIN_BUTTON,
-                                    ESP_GPIO_WAKEUP_GPIO_LOW);
+  // pinMode(PIN_BUTTON, INPUT_PULLUP);
+  // esp_sleep_enable_ext0_wakeup((gpio_num_t)PIN_BUTTON, 0);
+
+  uint64_t buttonMask = (1ULL << PIN_BUTTON) | (1ULL << BUTTON_D1);
+  esp_sleep_enable_ext1_wakeup(buttonMask, ESP_EXT1_WAKEUP_ANY_LOW);
 
   Serial.print(TXT_AWAKE_FOR);
   Serial.println(" " + String((millis() - startTime) / 1000.0, 3) + "s");
   Serial.print(TXT_ENTERING_DEEP_SLEEP_FOR);
   Serial.println(" " + String(sleepDuration) + "s");
   Serial.println("Press button to wake early");
+  uint32_t batteryVoltage = readBatteryVoltage();
+  Serial.print(TXT_BATTERY_VOLTAGE);
+  Serial.println(": " + String(batteryVoltage) + "mv");
   Serial.flush();
   esp_deep_sleep_start();
 }
@@ -662,9 +670,17 @@ void setup() {
     break;
   }
   case ESP_SLEEP_WAKEUP_EXT0:
-  case ESP_SLEEP_WAKEUP_EXT1:
+  case ESP_SLEEP_WAKEUP_EXT1: {
     Serial.println("Wake: External");
+    uint64_t wakeup_pin_mask = esp_sleep_get_ext1_wakeup_status();
+      
+    if (wakeup_pin_mask & (1ULL << BUTTON_D1)) {
+      Serial.println("Wake: BUTTON_D1");
+      executeButtonD1Routine();
+      delay(10000);
+    }    
     break;
+  }
   default:
     Serial.println("Wake: Power on / Reset");
     currentDisplayMode = MODE_WEATHER; // Reset to weather on power-on
@@ -680,7 +696,8 @@ void setup() {
   // Open namespace for read/write to non-volatile storage
   prefs.begin(NVS_NAMESPACE, false);
 
-#if BATTERY_MONITORING
+  #if BATTERY_MONITORING
+
   uint32_t batteryVoltage = readBatteryVoltage();
   Serial.print(TXT_BATTERY_VOLTAGE);
   Serial.println(": " + String(batteryVoltage) + "mv");
@@ -692,16 +709,16 @@ void setup() {
       prefs.putBool("lowBat", true);
       prefs.end();
       initDisplay();
+      String battMsg = String(TXT_LOW_BATTERY);
       do {
-        drawError(battery_alert_0deg_196x196, TXT_LOW_BATTERY);
+        drawError(battery_alert_0deg_196x196, battMsg);
       } while (display.nextPage());
       powerOffDisplay();
     }
 
     // Enable button wake for all low battery cases
     pinMode(PIN_BUTTON, INPUT_PULLUP);
-    esp_deep_sleep_enable_gpio_wakeup(1ULL << PIN_BUTTON,
-                                      ESP_GPIO_WAKEUP_GPIO_LOW);
+    esp_sleep_enable_ext0_wakeup((gpio_num_t)PIN_BUTTON, 0);
 
     if (batteryVoltage <= CRIT_LOW_BATTERY_VOLTAGE) {
       Serial.println(TXT_CRIT_LOW_BATTERY_VOLTAGE);
@@ -942,6 +959,24 @@ void setup() {
   // DEEP SLEEP
   watchdogCheckAndSleep(startTime, 30);
   beginDeepSleep(startTime, &timeInfo);
+}
+
+void executeButtonD1Routine() {
+  // RENDER WEATHER DISPLAY
+  unsigned long startTime = millis();
+  watchdogCheckAndSleep(startTime, 30);
+  Serial.println("Initializing display...");
+  initDisplay();
+  Serial.println("Display initialized.");
+  feedWatchdog();
+  do {
+    display.fillScreen(GxEPD_WHITE);
+    display.setFont(&FONT_14pt8b);
+    display.setTextColor(GxEPD_BLACK);
+    drawString(100, 200, "BUTTON D1 PRESSED", LEFT);
+  } while (display.nextPage());
+  Serial.println("Display rendering finished.");
+  powerOffDisplay();
 }
 
 /* This will never run */
