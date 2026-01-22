@@ -1,0 +1,51 @@
+diff a/src/config.cpp b/src/config.cpp	(rejected hunks)
+@@ -10,37 +10,49 @@
+  #include "secrets.h" // Contains all sensitive configuration
+  
+  // =============================================================================
+ -// TRMNL OG PIN DEFINITIONS (ESP32-C3)
+ +// TRMNL OG PIN DEFINITIONS
+  // Based on TRMNL firmware pinout
+ +// Different pin configurations for ESP32-C3 and ESP32-S3
+  // =============================================================================
+++<<<<<<< HEAD
+ +#ifdef BOARD_TRMNL
+ +  // ESP32-C3 Pin Configuration
+ +  const uint8_t PIN_BAT_ADC = 3;   // Battery ADC (GPIO3)
+ +  const uint8_t PIN_EPD_BUSY = 4;  // E-Paper BUSY
+ +  const uint8_t PIN_EPD_CS = 6;    // E-Paper CS (Chip Select)
+ +  const uint8_t PIN_EPD_RST = 10;  // E-Paper RST (Reset)
+ +  const uint8_t PIN_EPD_DC = 5;    // E-Paper DC (Data/Command)
+ +  const uint8_t PIN_EPD_SCK = 7;   // E-Paper SCK (SPI Clock)
+ +  const uint8_t PIN_EPD_MISO = -1; // Not used (display is write-only)
+ +  const uint8_t PIN_EPD_MOSI = 8;  // E-Paper MOSI (SPI Data)
+ +  const uint8_t PIN_EPD_PWR = -1;  // Not used on TRMNL OG (always powered)
+ +#elif defined(BOARD_TRMNL_ESP32S3)
+ +  // ESP32-S3 Pin Configuration - TRMNL 7inch5 OG DIY Kit
+ +  const uint8_t PIN_BAT_ADC = 1;   // Battery ADC (GPIO1)
+ +  const uint8_t PIN_VBAT_SWITCH = 6; // Battery voltage switch (must be HIGH to read)
+ +  const uint8_t PIN_EPD_BUSY = 4;  // E-Paper BUSY
+ +  const uint8_t PIN_EPD_CS = 44;    // E-Paper CS (Chip Select)
+ +  const uint8_t PIN_EPD_RST = 38;   // E-Paper RST (Reset)
+ +  const uint8_t PIN_EPD_DC = 10;    // E-Paper DC (Data/Command)
+ +  const uint8_t PIN_EPD_SCK = 7;   // E-Paper SCK (SPI Clock)
+ +  const uint8_t PIN_EPD_MISO = -1; // Not used (display is write-only)
+ +  const uint8_t PIN_EPD_MOSI = 9;  // E-Paper MOSI (SPI Data)
+ +  const uint8_t PIN_EPD_PWR = -1;  // Not used on TRMNL OG (always powered)
+ +#else
+ +  #error "Please define either BOARD_ESP32C3 or BOARD_ESP32S3 in platformio.ini"
+ +#endif
+++=======
++ const uint8_t PIN_BAT_ADC = 3;   // Battery ADC (GPIO3)
++ const uint8_t PIN_EPD_BUSY = 4;  // E-Paper BUSY
++ const uint8_t PIN_EPD_CS = 6;    // E-Paper CS (Chip Select)
++ const uint8_t PIN_EPD_RST = 10;  // E-Paper RST (Reset)
++ const uint8_t PIN_EPD_DC = 5;    // E-Paper DC (Data/Command)
++ const uint8_t PIN_EPD_SCK = 7;   // E-Paper SCK (SPI Clock)
++ const uint8_t PIN_EPD_MISO = -1; // Not used (display is write-only)
++ const uint8_t PIN_EPD_MOSI = 8;  // E-Paper MOSI (SPI Data)
++ const uint8_t PIN_EPD_PWR = -1;  // Not used on TRMNL OG (always powered)
+++>>>>>>> parent of eaa28e5 (Refactor pin definitions for ESP32-S3)
+  
+  // BME sensor pins - not used, we use Home Assistant
+  const uint8_t PIN_BME_SDA = -1;
