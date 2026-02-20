@@ -81,6 +81,7 @@ void drawAlerts(std::vector<owm_alerts_t> &alerts,
 void drawLocationDate(const String &city, const String &date);
 void drawOutlookGraph(const owm_hourly_t *hourly, const owm_daily_t *daily,
                       tm timeInfo);
+void drawTibberGraph(const tibber_price_info_t &priceInfo, tm timeInfo);
 void drawStatusBar(const String &statusStr, const String &refreshTimeStr,
                    int rssi, uint32_t batVoltage);
 void drawError(const uint8_t *bitmap_196x196,

@@ -27,6 +27,7 @@
 #include <time.h>
 
 #include "_locale.h"
+#include "_strftime.h"
 #include "api_response.h"
 #include "client_utils.h"
 #include "display_utils.h"
@@ -54,6 +55,10 @@ String getFirmwareVersion() { return String(FIRMWARE_VERSION); }
 static owm_resp_onecall_t owm_onecall;
 static owm_resp_air_pollution_t owm_air_pollution;
 static bool airPollutionSuccess = false;
+
+// Tibber price data
+static tibber_price_info_t tibberPriceInfo;
+static bool tibberPriceSuccess = false;
 
 // NVS preferences
 Preferences prefs;
@@ -125,6 +130,97 @@ float getHomeAssistantSensorState(const char *entity_id) {
 
   Serial.println("HA sensor unavailable or unknown");
   return NAN;
+}
+
+void getTibberPrice() {
+  tibberPriceSuccess = false;
+  tibberPriceInfo.count = 0;
+  
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+    http.begin(SECRET_TIBBER_API_ENDPOINT);
+    http.addHeader("Content-Type", "application/json");
+    http.addHeader("Authorization", "Bearer " + String(TIBBER_API_TOKEN));
+
+    // GraphQL Query
+    String payload = "{\"query\": \"{ viewer { homes { currentSubscription { priceInfo { today { total startsAt level } tomorrow { total startsAt level } } } } } }\"}";
+    
+    int httpCode = http.POST(payload);
+    if (httpCode > 0) {
+      String response = http.getString();
+      Serial.println("[Tibber] Response received:");
+      Serial.println(response);
+      
+      // Parse JSON response
+      JsonDocument doc;
+      DeserializationError error = deserializeJson(doc, response);
+      
+      if (error) {
+        Serial.print("[Tibber] JSON parse error: ");
+        Serial.println(error.c_str());
+        http.end();
+        return;
+      }
+      
+      // Navigate through the JSON structure
+      JsonArray today = doc["data"]["viewer"]["homes"][0]["currentSubscription"]["priceInfo"]["today"];
+      JsonArray tomorrow = doc["data"]["viewer"]["homes"][0]["currentSubscription"]["priceInfo"]["tomorrow"];
+      
+      int idx = 0;
+      
+      // Process today's prices
+      if (today) {
+        for (JsonObject price : today) {
+          if (idx >= TIBBER_MAX_PRICES) break;
+          
+          tibberPriceInfo.prices[idx].total = price["total"];
+          tibberPriceInfo.prices[idx].startsAt = price["startsAt"].as<String>();
+          tibberPriceInfo.prices[idx].level = price["level"].as<String>();
+          
+          // Parse ISO timestamp to Unix timestamp
+          struct tm tm;
+          if (strptime(tibberPriceInfo.prices[idx].startsAt.c_str(), "%Y-%m-%dT%H:%M:%S", &tm) != NULL) {
+            tibberPriceInfo.prices[idx].dt = mktime(&tm);
+          } else {
+            tibberPriceInfo.prices[idx].dt = 0;
+          }
+          
+          idx++;
+        }
+      }
+      
+      // Process tomorrow's prices
+      if (tomorrow) {
+        for (JsonObject price : tomorrow) {
+          if (idx >= TIBBER_MAX_PRICES) break;
+          
+          tibberPriceInfo.prices[idx].total = price["total"];
+          tibberPriceInfo.prices[idx].startsAt = price["startsAt"].as<String>();
+          tibberPriceInfo.prices[idx].level = price["level"].as<String>();
+          
+          // Parse ISO timestamp to Unix timestamp
+          struct tm tm;
+          if (strptime(tibberPriceInfo.prices[idx].startsAt.c_str(), "%Y-%m-%dT%H:%M:%S", &tm) != NULL) {
+            tibberPriceInfo.prices[idx].dt = mktime(&tm);
+          } else {
+            tibberPriceInfo.prices[idx].dt = 0;
+          }
+          
+          idx++;
+        }
+      }
+      
+      tibberPriceInfo.count = idx;
+      tibberPriceSuccess = (idx > 0);
+      
+      Serial.printf("[Tibber] Parsed %d prices successfully\\n", idx);
+    } else {
+      Serial.printf("[Tibber] HTTP error code: %d\\n", httpCode);
+    }
+    http.end();
+  } else {
+    Serial.println("[Tibber] WiFi not connected");
+  }
 }
 
 // PNG decoder instance and image buffer (global for callback access)
@@ -542,31 +638,43 @@ void beginDeepSleep(unsigned long startTime, tm *timeInfo) {
     bedtimeHour = (BED_TIME - WAKE_TIME + 24) % 24;
   }
 
-  int curHour = (timeInfo->tm_hour - WAKE_TIME + 24) % 24;
-  const int curMinute = curHour * 60 + timeInfo->tm_min;
-  const int curSecond =
-      curHour * 3600 + timeInfo->tm_min * 60 + timeInfo->tm_sec;
-  const int desiredSleepSeconds = SLEEP_DURATION * 60;
-  const int offsetMinutes = curMinute % SLEEP_DURATION;
-  const int offsetSeconds = curSecond % desiredSleepSeconds;
-
-  int sleepMinutes = SLEEP_DURATION - offsetMinutes;
-  if (desiredSleepSeconds - offsetSeconds < 120 ||
-      offsetSeconds / (float)desiredSleepSeconds > 0.95f) {
-    sleepMinutes += SLEEP_DURATION;
+  // Wakeup soll immer 1 Minute nach der vollen Stunde erfolgen (xx:01)
+  const int TARGET_WAKEUP_MINUTE = 1;
+  
+  int currentHour = timeInfo->tm_hour;
+  int currentMinute = timeInfo->tm_min;
+  int currentSecond = timeInfo->tm_sec;
+  
+  // Berechne Minuten bis zum nächsten Wakeup
+  int sleepMinutes;
+  int wakeupHour;
+  
+  if (currentMinute < TARGET_WAKEUP_MINUTE) {
+    // Wir sind vor xx:01, wache in dieser Stunde auf
+    sleepMinutes = TARGET_WAKEUP_MINUTE - currentMinute;
+    wakeupHour = currentHour;
+  } else {
+    // Wir sind nach xx:01, wache in der nächsten Stunde auf
+    sleepMinutes = (60 - currentMinute) + TARGET_WAKEUP_MINUTE;
+    wakeupHour = (currentHour + 1) % 24;
   }
-
-  const int predictedWakeHour = ((curMinute + sleepMinutes) / 60) % 24;
+  
+  // Prüfe ob Wakeup in Bedtime fällt
+  int curHour = (timeInfo->tm_hour - WAKE_TIME + 24) % 24;
+  int predictedWakeHour = (wakeupHour - WAKE_TIME + 24) % 24;
 
   uint64_t sleepDuration;
   if (predictedWakeHour < bedtimeHour) {
-    sleepDuration = sleepMinutes * 60 - timeInfo->tm_sec;
+    // Normale Weckzeit: Berechne exakte Sekunden bis xx:01:00
+    sleepDuration = sleepMinutes * 60ULL - currentSecond;
   } else {
+    // Weckzeit fällt in Bedtime, schlafe bis WAKE_TIME
     const int hoursUntilWake = 24 - curHour;
     sleepDuration = hoursUntilWake * 3600ULL -
                     (timeInfo->tm_min * 60ULL + timeInfo->tm_sec);
   }
 
+  // Kleine Anpassung für Drift-Kompensation
   sleepDuration += 3ULL;
   sleepDuration *= 1.0015f;
 
@@ -585,10 +693,18 @@ void beginDeepSleep(unsigned long startTime, tm *timeInfo) {
   uint64_t buttonMask = (1ULL << PIN_BUTTON) | (1ULL << BUTTON_D1);
   esp_sleep_enable_ext1_wakeup(buttonMask, ESP_EXT1_WAKEUP_ANY_LOW);
 
+  // Berechne erwartete Weckzeit für Debug-Ausgabe
+  time_t now = mktime(timeInfo);
+  time_t wakeTime = now + sleepDuration;
+  tm wakeTimeInfo;
+  localtime_r(&wakeTime, &wakeTimeInfo);
+  
   Serial.print(TXT_AWAKE_FOR);
   Serial.println(" " + String((millis() - startTime) / 1000.0, 3) + "s");
   Serial.print(TXT_ENTERING_DEEP_SLEEP_FOR);
   Serial.println(" " + String(sleepDuration) + "s");
+  Serial.printf("Next wakeup at %02d:%02d:%02d\n", 
+                wakeTimeInfo.tm_hour, wakeTimeInfo.tm_min, wakeTimeInfo.tm_sec);
   Serial.println("Press button to wake early");
   uint32_t batteryVoltage = readBatteryVoltage();
   Serial.print(TXT_BATTERY_VOLTAGE);
@@ -676,8 +792,10 @@ void setup() {
       
     if (wakeup_pin_mask & (1ULL << BUTTON_D1)) {
       Serial.println("Wake: BUTTON_D1");
-      executeButtonD1Routine();
-      delay(10000);
+      #if defined(USE_TIBBER) && USE_TIBBER == 1
+        Serial.println("Switching to Tibber mode");
+        currentDisplayMode = MODE_TIBBER;
+      #endif
     }    
     break;
   }
@@ -753,6 +871,8 @@ void setup() {
   String statusStr = {};
   String tmpStr = {};
   tm timeInfo = {};
+  float inTibberCumulatedConsumption = NAN;
+  float inTibberCumulatedCost = NAN;
 
   // START WIFI using saved credentials
   int wifiRSSI = 0;
@@ -810,6 +930,92 @@ void setup() {
     } else {
       killWiFi();
     }
+    beginDeepSleep(startTime, &timeInfo);
+    return; // Don't continue to weather code
+  }
+
+  String refreshTimeStr;
+  getRefreshTimeStr(refreshTimeStr, timeConfigured, &timeInfo);
+
+  // =========================================================================
+  // TIBBER MODE
+  // =========================================================================
+  if (currentDisplayMode == MODE_TIBBER) {
+    Serial.println("Display mode: TIBBER");
+    
+    // Fetch Tibber prices (WiFi is already connected)
+    watchdogCheckAndSleep(startTime, 30);
+    getTibberPrice();
+    feedWatchdog();
+    inTibberCumulatedConsumption = getHomeAssistantSensorState(HA_TIBBER_CUMULATED_CONSUMPTION_ENTITY);
+    inTibberCumulatedCost = getHomeAssistantSensorState(HA_TIBBER_CUMULATED_COST_ENTITY);
+    
+    killWiFi(); // WiFi no longer needed
+    
+    // RENDER TIBBER DISPLAY
+    watchdogCheckAndSleep(startTime, 30);
+    Serial.println("Initializing display...");
+    initDisplay();
+    Serial.println("Display initialized.");
+    feedWatchdog();
+    
+    do {
+      display.fillScreen(GxEPD_WHITE);
+      
+      if (tibberPriceSuccess && tibberPriceInfo.count > 0) {
+        // Draw title
+        display.setFont(&FONT_16pt8b);
+        drawString(400, 30, "Tibber Strompreise", CENTER, GxEPD_BLACK);
+        
+        // Draw current time
+        display.setFont(&FONT_10pt8b);
+        char timeBuffer[64];
+        _strftime(timeBuffer, sizeof(timeBuffer), "%A, %d. %B %Y %H:%M", &timeInfo);
+        drawString(400, 60, String(timeBuffer), CENTER);
+        
+        // Draw price graph
+        drawTibberGraph(tibberPriceInfo, timeInfo);
+        
+        // Draw current price info
+        time_t now = mktime(&timeInfo);
+        float currentPrice = -1.0f;
+        String currentLevel = "";
+        
+        for (int i = 0; i < tibberPriceInfo.count; i++) {
+          if (tibberPriceInfo.prices[i].dt <= now && 
+              (i + 1 >= tibberPriceInfo.count || tibberPriceInfo.prices[i + 1].dt > now)) {
+            currentPrice = tibberPriceInfo.prices[i].total;
+            currentLevel = tibberPriceInfo.prices[i].level;
+            break;
+          }
+        }
+        
+        int Col1X = 12;
+        int Col2X = 105;
+        display.setFont(&FONT_9pt8b);
+        if (currentPrice >= 0) {
+          drawString(Col1X, 20, "Aktuell:", LEFT);
+          drawString(Col2X, 20, String(currentPrice, 2) + " EUR/kWh", LEFT);
+        }
+        if (inTibberCumulatedConsumption != NAN) {
+          drawString(Col1X, 45, "Verbrauch:", LEFT);
+          drawString(Col2X, 45, String(inTibberCumulatedConsumption, 2) + " kWh", LEFT);
+        }
+        if (inTibberCumulatedCost != NAN) {
+          drawString(Col1X, 70, "Kosten", LEFT);
+          drawString(Col2X, 70, String(inTibberCumulatedCost, 2) + " EUR", LEFT);
+        }
+      } else {
+        display.setFont(&FONT_14pt8b);
+        display.setTextColor(GxEPD_BLACK);
+        drawString(400, 240, "Keine Tibber-Daten", CENTER);
+        drawString(400, 280, "verfügbar", CENTER);
+      }
+      drawStatusBar(statusStr, refreshTimeStr, wifiRSSI, batteryVoltage);
+    } while (display.nextPage());
+    
+    Serial.println("Display rendering finished.");
+    powerOffDisplay();
     beginDeepSleep(startTime, &timeInfo);
     return; // Don't continue to weather code
   }
@@ -913,8 +1119,6 @@ void setup() {
 
   killWiFi(); // WiFi no longer needed
 
-  String refreshTimeStr;
-  getRefreshTimeStr(refreshTimeStr, timeConfigured, &timeInfo);
   String dateStr;
   getDateStr(dateStr, &timeInfo);
 

@@ -905,6 +905,156 @@ void drawOutlookGraph(const owm_hourly_t *hourly, const owm_daily_t *daily,
   return;
 }
 
+/* Draw Tibber price graph */
+void drawTibberGraph(const tibber_price_info_t &priceInfo, tm timeInfo) {
+  if (priceInfo.count == 0) {
+    Serial.println("[Tibber Graph] No price data available");
+    return;
+  }
+
+  const int xPos0 = 50;  // Left margin for price labels
+  int xPos1 = EFF_WIDTH - 10;  // Right margin
+  const int yPos0 = 110;  // Top position 
+  const int yPos1 = EFF_HEIGHT - 40;  // Bottom position
+
+  // Find min/max prices
+  float priceMin = priceInfo.prices[0].total;
+  float priceMax = priceInfo.prices[0].total;
+  
+  for (int i = 1; i < priceInfo.count; ++i) {
+    priceMin = std::min(priceMin, priceInfo.prices[i].total);
+    priceMax = std::max(priceMax, priceInfo.prices[i].total);
+  }
+
+  // Add some padding to the bounds
+  float pricePadding = (priceMax - priceMin) * 0.1f;
+  if (pricePadding < 0.01f) pricePadding = 0.01f;
+  
+  float priceBoundMin = priceMin - pricePadding;
+  float priceBoundMax = priceMax + pricePadding;
+
+  // Round to nice numbers
+  priceBoundMin = floor(priceBoundMin * 100.0f) / 100.0f;
+  priceBoundMax = ceil(priceBoundMax * 100.0f) / 100.0f;
+
+  // Draw axes
+  display.drawLine(xPos0 + MARGIN_X, yPos1 + MARGIN_Y, xPos1 + MARGIN_X,
+                   yPos1 + MARGIN_Y, GxEPD_BLACK);
+  display.drawLine(xPos0 + MARGIN_X, yPos1 - 1 + MARGIN_Y, xPos1 + MARGIN_X,
+                   yPos1 - 1 + MARGIN_Y, GxEPD_BLACK);
+
+  // Draw Y-axis labels (prices)
+  int yMajorTicks = 5;
+  float yInterval = (yPos1 - yPos0) / static_cast<float>(yMajorTicks);
+  float priceInterval = (priceBoundMax - priceBoundMin) / static_cast<float>(yMajorTicks);
+
+  for (int i = 0; i <= yMajorTicks; ++i) {
+    int yTick = static_cast<int>(yPos0 + (i * yInterval));
+    float priceValue = priceBoundMax - (i * priceInterval);
+    
+    display.setFont(&FONT_8pt8b);
+    String priceStr = String(priceValue, 2);  // 2 decimal places
+    drawString(xPos0 - 8, yTick + 4, priceStr, RIGHT, ACCENT_COLOR);
+
+    // Draw horizontal grid lines
+    if (i < yMajorTicks) {
+      for (int x = xPos0 + MARGIN_X; x <= xPos1 + 1 + MARGIN_X; x += 3) {
+        display.drawPixel(x, yTick + (yTick % 2) + MARGIN_Y, GxEPD_BLACK);
+      }
+    }
+  }
+
+  // Draw price unit label - positioned left top
+  display.setFont(&FONT_8pt8b);
+  drawString(xPos0, yPos0 - 10, "EUR/kWh", LEFT, ACCENT_COLOR);
+
+  // Calculate positions for bars
+  float xInterval = (xPos1 - xPos0 - 1) / static_cast<float>(priceInfo.count);
+  float yPxPerUnit = (yPos1 - yPos0) / (priceBoundMax - priceBoundMin);
+
+  // Define threshold at 0.32 EUR/kWh
+  const float thresholdPrice = 0.32f;
+
+  // Get current time for highlighting current hour bar
+  time_t now = time(nullptr);
+  tm *currentTime = localtime(&now);
+  int currentHour = currentTime->tm_hour;
+  int currentDay = currentTime->tm_mday;
+
+  // Draw price bars with color coding by level
+  for (int i = 0; i < priceInfo.count; ++i) {
+    float price = priceInfo.prices[i].total;
+    int x0 = static_cast<int>(std::round(xPos0 + 1 + (i * xInterval))) + MARGIN_X;
+    int x1 = static_cast<int>(std::round(xPos0 + 1 + ((i + 1) * xInterval))) + MARGIN_X;
+    
+    int y0 = static_cast<int>(std::round(yPos1 - (yPxPerUnit * (price - priceBoundMin)))) + MARGIN_Y;
+    int y1 = yPos1 + MARGIN_Y;
+
+    // Check if this bar represents the current hour
+    time_t barTime = priceInfo.prices[i].dt;
+    tm *barTimeInfo = localtime(&barTime);
+    bool isCurrentHour = (barTimeInfo->tm_hour == currentHour && 
+                          barTimeInfo->tm_mday == currentDay);
+
+    // Determine color/pattern based on price threshold and time
+    bool isLowPrice = (price < thresholdPrice);
+    
+    // Draw filled bar
+    for (int y = y0; y < y1 - 1; ++y) {
+      for (int x = x0; x < x1 - 1; x++) {
+        if (isCurrentHour) {
+          // Dark gray pattern for current hour: 75% gray (3 of 4 pixels)
+          if (!(x % 2 == 1 && y % 2 == 1)) {
+            display.drawPixel(x, y, GxEPD_BLACK);
+          }
+        } else if (isLowPrice) {
+          // Light gray pattern for prices < 0.32: only every 4th pixel (25% gray)
+          if (x % 2 == 0 && y % 2 == 0) {
+            display.drawPixel(x, y, GxEPD_BLACK);
+          }
+        } else {
+          // Medium gray pattern for prices >= 0.32: every other pixel (50% gray)
+          if ((x + y) % 2 == 0) {
+            display.drawPixel(x, y, GxEPD_BLACK);
+          }
+        }
+      }
+    }
+  }
+
+  // Draw horizontal line at 0.32 EUR/kWh threshold
+  if (thresholdPrice >= priceBoundMin && thresholdPrice <= priceBoundMax) {
+    int yThreshold = static_cast<int>(std::round(yPos1 - (yPxPerUnit * (thresholdPrice - priceBoundMin)))) + MARGIN_Y;
+    for (int x = xPos0 + MARGIN_X; x <= xPos1 + MARGIN_X; x += 1) {
+      display.drawPixel(x, yThreshold, GxEPD_BLACK);
+    }
+  }
+
+  // Draw time labels on X-axis
+  int xMaxTicks = 8;
+  int hourInterval = static_cast<int>(ceil(priceInfo.count / static_cast<float>(xMaxTicks)));
+  
+  display.setFont(&FONT_8pt8b);
+  for (int i = 0; i < priceInfo.count; i += hourInterval) {
+    int xTick = static_cast<int>(xPos0 + (i * xInterval));
+    
+    // Draw tick marks
+    display.drawLine(xTick + MARGIN_X, yPos1 + 1 + MARGIN_Y, xTick + MARGIN_X,
+                     yPos1 + 4 + MARGIN_Y, GxEPD_BLACK);
+    display.drawLine(xTick + 1 + MARGIN_X, yPos1 + 1 + MARGIN_Y,
+                     xTick + 1 + MARGIN_X, yPos1 + 4 + MARGIN_Y, GxEPD_BLACK);
+    
+    // Format time label
+    char timeBuffer[12] = {};
+    time_t ts = priceInfo.prices[i].dt;
+    tm *ti = localtime(&ts);
+    _strftime(timeBuffer, sizeof(timeBuffer), HOUR_FORMAT, ti);
+    drawString(xTick, yPos1 + 1 + 12 + 4 + 3, timeBuffer, CENTER);
+  }
+
+  return;
+}
+
 /* Draw status bar - positioned relative to bottom edge */
 void drawStatusBar(const String &statusStr, const String &refreshTimeStr,
                    int rssi, uint32_t batVoltage) {

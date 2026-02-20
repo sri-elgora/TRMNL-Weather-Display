@@ -216,6 +216,24 @@ DeserializationError deserializeOneCall(WiFiClient &json,
 DeserializationError deserializeAirQuality(WiFiClient &json,
                                            owm_resp_air_pollution_t &r);
 
+// =============================================================================
+// TIBBER API RESPONSE STRUCTURES
+// =============================================================================
+#define TIBBER_MAX_PRICES 48  // Max prices for today + tomorrow (24h each)
+
+typedef struct tibber_price
+{
+  float total;              // Total price including taxes
+  String startsAt;          // ISO timestamp when this price starts
+  String level;             // Price level: VERY_CHEAP, CHEAP, NORMAL, EXPENSIVE, VERY_EXPENSIVE
+  int64_t dt;               // Unix timestamp (parsed from startsAt)
+} tibber_price_t;
+
+typedef struct tibber_price_info
+{
+  tibber_price_t prices[TIBBER_MAX_PRICES];
+  int count;                // Actual number of prices received
+} tibber_price_info_t;
 
 #endif
 

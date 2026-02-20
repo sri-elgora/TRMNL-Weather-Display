@@ -75,13 +75,13 @@ const String LON = SECRET_LON;
 const String CITY_STRING = SECRET_CITY_STRING;
 
 // =============================================================================
-// TIMEZONE AND TIME FORMATS - UK (Europe/London)
+// TIMEZONE AND TIME FORMATS - Deutschland (Europe/Berlin)
 // =============================================================================
-const char *TIMEZONE = "GMT0BST,M3.5.0/1,M10.5.0";
+const char *TIMEZONE = "CET-1CEST,M3.5.0,M10.5.0/3";
 const char *TIME_FORMAT = "%H:%M";               // 24-hour: 14:30
 const char *HOUR_FORMAT = "%H";                  // 24-hour: 14
 const char *DATE_FORMAT = "%a, %d %b";           // Sat, 28 Nov
-const char *REFRESH_TIME_FORMAT = "%d/%m %H:%M"; // 28/11 14:30
+const char *REFRESH_TIME_FORMAT = "%d.%m %H:%M"; // 28/11 14:30
 
 // =============================================================================
 // NTP SERVERS
@@ -93,7 +93,7 @@ const unsigned long NTP_TIMEOUT = 20000; // 20 seconds
 // =============================================================================
 // SLEEP SETTINGS
 // =============================================================================
-const int SLEEP_DURATION = 30;   // Minutes between updates
+const int SLEEP_DURATION = 60;   // Minutes between updates
 const int BED_TIME = 23;         // Hour to start extended sleep (11 PM)
 const int WAKE_TIME = 6;         // Hour to resume normal updates (6 AM)
 const int HOURLY_GRAPH_MAX = 24; // Hours to show in outlook graph
@@ -119,6 +119,8 @@ const int HA_PORT = SECRET_HA_PORT;
 const char *HA_TOKEN = SECRET_HA_TOKEN;
 const char *HA_TEMP_ENTITY = SECRET_HA_TEMP_ENTITY;
 const char *HA_HUMIDITY_ENTITY = SECRET_HA_HUMIDITY_ENTITY;
+const char *HA_TIBBER_CUMULATED_CONSUMPTION_ENTITY = SECRET_HA_TIBBER_CUMULATED_CONSUMPTION_ENTITY;
+const char *HA_TIBBER_CUMULATED_COST_ENTITY = SECRET_HA_TIBBER_CUMULATED_COST_ENTITY;
 
 // =============================================================================
 // MQTT CONFIGURATION (for Home Assistant telemetry)
@@ -138,3 +140,9 @@ const char *NEXTCLOUD_PASS = SECRET_NEXTCLOUD_PASS;
 const char *NEXTCLOUD_PHOTO = SECRET_NEXTCLOUD_PHOTO;
 const char *NEXTCLOUD_CARTOON = SECRET_NEXTCLOUD_CARTOON;
 const char *NEXTCLOUD_FIRMWARE_PATH = "/Shared/firmware/TRMNL/firmware.bin";
+
+// =============================================================================
+// TIBBER CONFIGURATION
+// =============================================================================
+const char *TIBBER_API_ENDPOINT = SECRET_TIBBER_API_ENDPOINT;
+const char *TIBBER_API_TOKEN = SECRET_TIBBER_API_TOKEN;

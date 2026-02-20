@@ -37,6 +37,8 @@
 #define SECRET_HA_TOKEN           "your_long_lived_access_token"
 #define SECRET_HA_TEMP_ENTITY     "sensor.living_room_temperature"
 #define SECRET_HA_HUMIDITY_ENTITY "sensor.living_room_humidity"
+#define SECRET_HA_TIBBER_CUMULATED_CONSUMPTION_ENTITY "sensor.tibber_cumulated_consumption"
+#define SECRET_HA_TIBBER_CUMULATED_COST_ENTITY "sensor.tibber_cumulated_cost"
 
 // =============================================================================
 // MQTT (optional - for publishing battery telemetry to Home Assistant)
@@ -57,6 +59,12 @@
 #define SECRET_NEXTCLOUD_PASS     "your_password"
 #define SECRET_NEXTCLOUD_PHOTO    "photo.png"
 #define SECRET_NEXTCLOUD_CARTOON  "cartoon.png"
+
+// =============================================================================
+// TIBBER (optional)
+// =============================================================================
+#define SECRET_TIBBER_API_ENDPOINT   "https://api.tibber.com/v1-beta/gql"
+#define SECRET_TIBBER_API_TOKEN      "????"
 
 #endif // SECRETS_H
 

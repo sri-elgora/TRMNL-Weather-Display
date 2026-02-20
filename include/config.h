@@ -170,6 +170,8 @@ extern const int HA_PORT;
 extern const char *HA_TOKEN;
 extern const char *HA_TEMP_ENTITY;
 extern const char *HA_HUMIDITY_ENTITY;
+extern const char *HA_TIBBER_CUMULATED_CONSUMPTION_ENTITY;
+extern const char *HA_TIBBER_CUMULATED_COST_ENTITY;
 
 // =============================================================================
 // MQTT CONFIGURATION
@@ -189,6 +191,13 @@ extern const char *NEXTCLOUD_CARTOON;
 extern const char *NEXTCLOUD_FIRMWARE_PATH;
 
 // Display modes
-enum DisplayMode { MODE_WEATHER = 0, MODE_CARTOON = 1, MODE_COUNT = 3 };
+enum DisplayMode { MODE_WEATHER = 0, MODE_CARTOON = 1, MODE_TIBBER = 2, MODE_COUNT = 3 };
+
+// =============================================================================
+// TIBBER CONFIGURATION
+// =============================================================================
+#define USE_TIBBER 1 
+extern const char *TIBBER_API_ENDPOINT;
+extern const char *TIBBER_API_TOKEN;
 
 #endif // __CONFIG_H__
