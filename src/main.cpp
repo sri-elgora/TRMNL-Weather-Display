@@ -135,6 +135,8 @@ float getHomeAssistantSensorState(const char *entity_id) {
 void getTibberPrice() {
   tibberPriceSuccess = false;
   tibberPriceInfo.count = 0;
+  tibberPriceInfo.cumulatedConsumption = NAN;
+  tibberPriceInfo.cumulatedCost = NAN;
   
   if (WiFi.status() == WL_CONNECTED) {
     HTTPClient http;
@@ -142,8 +144,8 @@ void getTibberPrice() {
     http.addHeader("Content-Type", "application/json");
     http.addHeader("Authorization", "Bearer " + String(TIBBER_API_TOKEN));
 
-    // GraphQL Query
-    String payload = "{\"query\": \"{ viewer { homes { currentSubscription { priceInfo { today { total startsAt level } tomorrow { total startsAt level } } } } } }\"}";
+    // GraphQL Query - fetch prices and today's consumption/cost
+    String payload = "{\"query\": \"{ viewer { homes { currentSubscription { priceInfo { today { total startsAt level } tomorrow { total startsAt level } } } consumption(resolution: DAILY, last: 1) { nodes { consumption totalCost } } } } }\"}";
     
     int httpCode = http.POST(payload);
     if (httpCode > 0) {
@@ -212,6 +214,19 @@ void getTibberPrice() {
       
       tibberPriceInfo.count = idx;
       tibberPriceSuccess = (idx > 0);
+      
+      // Parse consumption data for today
+      JsonArray consumptionNodes = doc["data"]["viewer"]["homes"][0]["consumption"]["nodes"];
+      if (consumptionNodes && consumptionNodes.size() > 0) {
+        JsonObject todayConsumption = consumptionNodes[0];
+        tibberPriceInfo.cumulatedConsumption = todayConsumption["consumption"].as<float>();
+        tibberPriceInfo.cumulatedCost = todayConsumption["totalCost"].as<float>();
+        Serial.printf("[Tibber] Today's consumption: %.2f kWh, cost: %.2f EUR\n", 
+                      tibberPriceInfo.cumulatedConsumption, 
+                      tibberPriceInfo.cumulatedCost);
+      } else {
+        Serial.println("[Tibber] No consumption data available");
+      }
       
       Serial.printf("[Tibber] Parsed %d prices successfully\\n", idx);
     } else {
@@ -943,12 +958,14 @@ void setup() {
   if (currentDisplayMode == MODE_TIBBER) {
     Serial.println("Display mode: TIBBER");
     
-    // Fetch Tibber prices (WiFi is already connected)
+    // Fetch Tibber prices and consumption data (WiFi is already connected)
     watchdogCheckAndSleep(startTime, 30);
     getTibberPrice();
     feedWatchdog();
-    inTibberCumulatedConsumption = getHomeAssistantSensorState(HA_TIBBER_CUMULATED_CONSUMPTION_ENTITY);
-    inTibberCumulatedCost = getHomeAssistantSensorState(HA_TIBBER_CUMULATED_COST_ENTITY);
+    
+    // Get consumption and cost from Tibber API response
+    inTibberCumulatedConsumption = tibberPriceInfo.cumulatedConsumption;
+    inTibberCumulatedCost = tibberPriceInfo.cumulatedCost;
     
     killWiFi(); // WiFi no longer needed
     
@@ -997,12 +1014,12 @@ void setup() {
           drawString(Col1X, 20, "Aktuell:", LEFT);
           drawString(Col2X, 20, String(currentPrice, 2) + " EUR/kWh", LEFT);
         }
-        if (inTibberCumulatedConsumption != NAN) {
+        if (!isnan(inTibberCumulatedConsumption)) {
           drawString(Col1X, 45, "Verbrauch:", LEFT);
           drawString(Col2X, 45, String(inTibberCumulatedConsumption, 2) + " kWh", LEFT);
         }
-        if (inTibberCumulatedCost != NAN) {
-          drawString(Col1X, 70, "Kosten", LEFT);
+        if (!isnan(inTibberCumulatedCost)) {
+          drawString(Col1X, 70, "Kosten:", LEFT);
           drawString(Col2X, 70, String(inTibberCumulatedCost, 2) + " EUR", LEFT);
         }
       } else {

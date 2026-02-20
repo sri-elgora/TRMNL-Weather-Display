@@ -233,6 +233,8 @@ typedef struct tibber_price_info
 {
   tibber_price_t prices[TIBBER_MAX_PRICES];
   int count;                // Actual number of prices received
+  float cumulatedConsumption; // Today's consumption in kWh
+  float cumulatedCost;        // Today's cost in currency
 } tibber_price_info_t;
 
 #endif

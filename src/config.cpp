@@ -119,8 +119,6 @@ const int HA_PORT = SECRET_HA_PORT;
 const char *HA_TOKEN = SECRET_HA_TOKEN;
 const char *HA_TEMP_ENTITY = SECRET_HA_TEMP_ENTITY;
 const char *HA_HUMIDITY_ENTITY = SECRET_HA_HUMIDITY_ENTITY;
-const char *HA_TIBBER_CUMULATED_CONSUMPTION_ENTITY = SECRET_HA_TIBBER_CUMULATED_CONSUMPTION_ENTITY;
-const char *HA_TIBBER_CUMULATED_COST_ENTITY = SECRET_HA_TIBBER_CUMULATED_COST_ENTITY;
 
 // =============================================================================
 // MQTT CONFIGURATION (for Home Assistant telemetry)

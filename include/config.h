@@ -170,8 +170,6 @@ extern const int HA_PORT;
 extern const char *HA_TOKEN;
 extern const char *HA_TEMP_ENTITY;
 extern const char *HA_HUMIDITY_ENTITY;
-extern const char *HA_TIBBER_CUMULATED_CONSUMPTION_ENTITY;
-extern const char *HA_TIBBER_CUMULATED_COST_ENTITY;
 
 // =============================================================================
 // MQTT CONFIGURATION
